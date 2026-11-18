@@ -46,6 +46,12 @@ const http = axios.create({
   timeout: 30_000,
 });
 
+// TEMPORARY (ngrok tunnel testing) - REMOVE BEFORE PRODUCTION.
+// A free ngrok tunnel answers browser requests with an HTML warning page instead
+// of the API response, which shows up as a CORS error. This header skips that
+// page. The backend allows it (oquick-console config/middlewares.js cors headers).
+http.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
+
 function parseRetryAfter(body: ApiErrorBody | undefined, header: unknown): number | null {
   const value = Number(body?.details?.retry_after ?? header);
   return Number.isFinite(value) && value > 0 ? Math.ceil(value) : null;
