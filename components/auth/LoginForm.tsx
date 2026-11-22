@@ -28,6 +28,7 @@ import { useAppSelector } from "@/store/hooks";
 import { selectRestaurant } from "@/store/selectors";
 import { Button } from "@/components/ui/Button";
 import { BackButton } from "@/components/ui/IconButton";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { LogoTile, PoweredBy } from "@/components/ui/Brand";
 import { OtpInput, OTP_LENGTH, type OtpInputHandle } from "./OtpInput";
 
@@ -54,7 +55,6 @@ interface LoginFormProps {
 
 export function LoginForm({ mode, onSuccess, onClose }: LoginFormProps) {
   const restaurant = useAppSelector(selectRestaurant);
-  const now = useNow(1000);
 
   const [step, setStep] = useState<Step>("phone");
   const [digits, setDigits] = useState("");
@@ -75,12 +75,11 @@ export function LoginForm({ mode, onSuccess, onClose }: LoginFormProps) {
 
   const phone = `${PHONE_COUNTRY_CODE}${digits}`;
   const phoneValid = LOCAL_NUMBER.test(digits);
-  const resendIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
   // Move focus with the step so the keyboard is ready for the next input.
   useEffect(() => {
     if (step === "phone") phoneInputRef.current?.focus();
-    else otpRef.current?.focus(0);
+    else otpRef.current?.focus();
   }, [step]);
 
   /* ---- step 1: send the code ---- */
@@ -131,7 +130,7 @@ export function LoginForm({ mode, onSuccess, onClose }: LoginFormProps) {
         setStep("phone");
       } else {
         setCodeError(errorMessage(error));
-        otpRef.current?.focus(0);
+        otpRef.current?.focus();
       }
     } finally {
       setVerifying(false);
@@ -139,14 +138,14 @@ export function LoginForm({ mode, onSuccess, onClose }: LoginFormProps) {
   }
 
   async function resend() {
-    if (resendIn > 0 || sending || !sentTo) return;
+    if (Date.now() < resendAt || sending || !sentTo) return;
     setSending(true);
     setCodeError(null);
     try {
       const sent = await guestApi.sendOtp(sentTo);
       setResendAt(Date.now() + sent.resend_in * 1000);
       setCode("");
-      otpRef.current?.focus(0);
+      otpRef.current?.focus();
       toast.success("We've sent you a new code");
     } catch (error) {
       if (error instanceof ApiError && error.status === 429 && error.retryAfter) {
@@ -306,7 +305,7 @@ export function LoginForm({ mode, onSuccess, onClose }: LoginFormProps) {
             setCodeError(null);
           }}
           onComplete={(value) => void verify(value)}
-          disabled={verifying}
+          busy={verifying}
           invalid={Boolean(codeError)}
         />
       </div>
@@ -316,20 +315,7 @@ export function LoginForm({ mode, onSuccess, onClose }: LoginFormProps) {
 
       <div className="mt-3 flex items-center justify-between gap-3">
         <span className="text-[16px] text-ink-2">Didn&apos;t get it?</span>
-        {resendIn > 0 ? (
-          <span className="inline-flex h-11 items-center gap-2 rounded-full bg-marigold-soft px-4 text-[16px] font-semibold text-marigold-ink tabular-nums">
-            <Clock size={18} aria-hidden /> Resend in {fmtCountdown(resendIn)}
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={resend}
-            disabled={sending}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-marigold px-5 text-[16px] font-semibold text-ink disabled:opacity-60"
-          >
-            {sending ? "Sending…" : "Resend code"}
-          </button>
-        )}
+        <ResendCode resendAt={resendAt} sending={sending} onResend={resend} />
       </div>
 
       {process.env.NODE_ENV === "development" && (
@@ -344,6 +330,34 @@ export function LoginForm({ mode, onSuccess, onClose }: LoginFormProps) {
         Verify and continue
       </Button>
       <PoweredBy />
+      {verifying && <LoadingOverlay label="Verifying your code" />}
     </form>
+  );
+}
+
+/**
+ * "Resend in 0:24" countdown, then the Resend button. Owns the 1-second clock so
+ * only this pill re-renders every tick, never the code boxes being typed into.
+ */
+function ResendCode({ resendAt, sending, onResend }: { resendAt: number; sending: boolean; onResend: () => void }) {
+  const now = useNow(1000, resendAt > 0);
+  const resendIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
+
+  if (resendIn > 0) {
+    return (
+      <span className="inline-flex h-11 items-center gap-2 rounded-full bg-marigold-soft px-4 text-[16px] font-semibold text-marigold-ink tabular-nums">
+        <Clock size={18} aria-hidden /> Resend in {fmtCountdown(resendIn)}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onResend}
+      disabled={sending}
+      className="inline-flex h-11 items-center gap-2 rounded-full bg-marigold px-5 text-[16px] font-semibold text-ink disabled:opacity-60"
+    >
+      {sending ? "Sending…" : "Resend code"}
+    </button>
   );
 }

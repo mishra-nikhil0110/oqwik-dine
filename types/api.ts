@@ -37,11 +37,11 @@ export interface Restaurant {
   service_charge_percent: number;
   primary_color: string | null;
   accepts_orders: boolean;
-  /**
-   * Not sent by the guest endpoint today. Typed as optional so the welcome and
-   * menu headers light up automatically if the backend starts including them.
-   */
+  /** Shown beside the name in the headers (initials when missing). Sent by GET /guest/tables/:qr_slug. */
   logo?: Media | null;
+  /** Sent by GET /guest/tables/:qr_slug; not part of the current design. */
+  cover_image?: Media | null;
+  /** Not sent by the guest endpoint today; rendered automatically if it is. */
   address?: RestaurantAddress | null;
 }
 

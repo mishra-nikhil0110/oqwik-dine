@@ -17,17 +17,23 @@ export function mediaUrl(url: string | null | undefined): string | null {
   return `${API_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
-type ImageSize = "thumb" | "hero";
+type ImageSize = "icon" | "thumb" | "hero";
 
 /**
  * Picks the smallest generated format that is still sharp at 3x:
+ * icons (logo tiles up to ~52 px) want ~156 px -> "thumbnail" (156 px);
  * thumbnails (112 px / 68 px) want ~340 px -> "small" (500 px);
  * the 390 px wide hero wants ~1200 px -> "large", then "medium".
  */
 export function pickImage(media: Media | null | undefined, size: ImageSize): string | null {
   if (!media) return null;
   const formats = media.formats ?? {};
-  const order = size === "thumb" ? (["small", "medium", "large"] as const) : (["large", "medium", "small"] as const);
+  const order =
+    size === "icon"
+      ? (["thumbnail", "small", "medium", "large"] as const)
+      : size === "thumb"
+        ? (["small", "medium", "large"] as const)
+        : (["large", "medium", "small"] as const);
   for (const key of order) {
     const url = formats[key]?.url;
     if (url) return mediaUrl(url);

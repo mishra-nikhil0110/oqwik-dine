@@ -1,5 +1,7 @@
 // components/ui/Brand.tsx - restaurant logo tile and the "Powered by OQwik" footer.
+"use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import type { Restaurant } from "@/types/api";
 import logoColor from "@/assets/brand/oqwik-logo-horizontal-color.svg";
@@ -7,10 +9,7 @@ import { initials } from "@/lib/format";
 import { pickImage } from "@/lib/menu";
 import { cn } from "@/lib/utils";
 
-/**
- * Restaurant logo: 104 px (welcome), 44 px (menu), 36 px (login). Shows the
- * uploaded logo when the API provides one, otherwise Ink tile + Marigold initials.
- */
+
 export function LogoTile({
   restaurant,
   size,
@@ -20,17 +19,33 @@ export function LogoTile({
   size: number;
   className?: string;
 }) {
-  const logo = pickImage(restaurant.logo ?? null, "thumb");
+  const src = pickImage(restaurant.logo ?? null, size <= 52 ? "icon" : "thumb");
+  // The URL that failed, so a new logo (another restaurant, a re-upload) is tried again.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const logo = src && src !== failedSrc ? src : null;
   const radius = Math.round(size * 0.27);
   return (
     <span
-      className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden bg-ink text-marigold font-bold", className)}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center overflow-hidden font-bold",
+        logo ? "border border-line bg-white" : "bg-ink text-marigold",
+        className,
+      )}
       style={{ width: size, height: size, borderRadius: radius, fontSize: Math.round(size * 0.4) }}
-      aria-hidden={logo ? undefined : true}
+      aria-hidden
     >
       {logo ? (
         // eslint-disable-next-line @next/next/no-img-element -- uploads come from any configured storage host
-        <img src={logo} alt={`${restaurant.name} logo`} className="size-full object-cover" />
+        <img
+          src={logo}
+          alt=""
+          width={size}
+          height={size}
+          decoding="async"
+          draggable={false}
+          onError={() => setFailedSrc(logo)}
+          className="size-full object-cover"
+        />
       ) : (
         <span className="leading-none tracking-tight">{initials(restaurant.name)}</span>
       )}

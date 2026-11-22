@@ -1,8 +1,3 @@
-// /t/[qrSlug]/checkout - design screen 8, adapted to the backend's payment setup:
-// the order (items, note, estimated bill), the verified number and one
-// "Pay now" button. The gateway (PhonePe or Razorpay) comes from the
-// restaurant's settings via checkout.provider, and the customer chooses UPI /
-// card / netbanking on that gateway's own secure screen (guide §6).
 "use client";
 
 import Link from "next/link";
@@ -13,12 +8,14 @@ import { fmtPhone, fmtPrice, pluralize, tableName } from "@/lib/format";
 import { toCheckoutLines } from "@/lib/cart";
 import { describeChoices } from "@/lib/menu";
 import { useCheckout } from "@/hooks/useCheckout";
+import { useLoginOpen } from "@/hooks/useLoginOpen";
 import { tablePath, useTableSlug } from "@/hooks/useTableSlug";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { selectCartTotals, selectPricedLines, selectUnavailableLines } from "@/store/selectors";
 import { logout } from "@/store/thunks/sessionThunks";
 import { Button } from "@/components/ui/Button";
 import { BackButton } from "@/components/ui/IconButton";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { LogoTile, PoweredBy } from "@/components/ui/Brand";
 import { VegMark } from "@/components/ui/Dish";
 import { BottomBar, Screen, ScreenHeader, ToPay } from "@/components/ui/Layout";
@@ -36,6 +33,7 @@ export default function CheckoutPage() {
   const unavailable = useAppSelector(selectUnavailableLines);
   const session = useAppSelector((s) => s.session);
   const { pay, busy, error } = useCheckout(qrSlug);
+  const loginOpen = useLoginOpen();
 
   const blocked = !data?.restaurant.accepts_orders || lines.length === 0 || unavailable.length > 0;
 
@@ -170,6 +168,8 @@ export default function CheckoutPage() {
           </Button>
         </div>
       </BottomBar>
+      {/* Pricing the order and opening the payment page; steps aside for the re-login sheet. */}
+      {busy && !loginOpen && <LoadingOverlay label="Starting secure payment" />}
     </>
   );
 }

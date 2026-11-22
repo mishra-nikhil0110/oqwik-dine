@@ -44,6 +44,11 @@ export function finishLogin(ok: boolean): void {
   resolve?.(ok);
 }
 
+/** Whether the login sheet is open right now (snapshot for useSyncExternalStore). */
+export function isLoginOpen(): boolean {
+  return open;
+}
+
 export function subscribeLoginGate(listener: Listener): () => void {
   listeners.add(listener);
   listener(open);
